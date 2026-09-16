@@ -9,14 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import BigScreenDashboard from "@/components/big-screen-dashboard";
 
-type View = "dashboard" | "knowledge" | "governance" | "cameras" | "agent";
+type View = "dashboard" | "guide" | "knowledge" | "governance" | "cameras" | "agent";
 type Risk = "WATCH" | "HIGH" | "NORMAL";
 type RunStage = "idle" | "gap" | "probe" | "verify" | "done";
 type ModelContext = { registerTool: (tool: { name: string; title: string; description: string; inputSchema: object; annotations: { readOnlyHint: boolean; untrustedContentHint: boolean }; execute: (input: unknown) => unknown }, options?: { signal?: AbortSignal }) => void | Promise<void> };
 
 const nav = [
   { id: "dashboard", href: "/", label: "风险态势", icon: Layers3 },
+  { id: "guide", href: "/demo-guide", label: "演示导览", icon: Route },
   { id: "cameras", href: "/cameras", label: "视频感知", icon: Camera },
   { id: "agent", href: "/agent", label: "智能体", icon: Bot },
   { id: "knowledge", href: "/knowledge", label: "知识库", icon: BookOpen },
@@ -33,14 +35,21 @@ const scenarioLocations = [
 const graphNodes = ["ingest", "privacy", "scene_fusion", "grounding", "retrieve", "hypothesis", "evidence_gap", "active_probe", "verify", "risk", "action", "human_gate", "memory", "publish"];
 
 const knowledgeCards = [
-  { id: "GB-55037-4.2.1", source: "建筑防火通用规范", title: "疏散通道与安全出口应保持畅通", domain: "消防安全", zone: "疏散通道", level: "HIGH", active: true, version: "v2.1" },
-  { id: "LAB-OPS-7.3", source: "校级实验室安全管理办法", title: "无人值守期间不得运行高风险设备", domain: "实验室安全", zone: "实验室", level: "HIGH", active: true, version: "v1.4" },
-  { id: "DORM-FIRE-3.6", source: "学生公寓消防安全细则", title: "电动车不得进入建筑内部或占用公共走道", domain: "消防安全", zone: "宿舍门厅", level: "HIGH", active: true, version: "v3.0" },
-  { id: "TEMP-NEW-01", source: "校内临时治理要求", title: "楼梯前室不得临时堆放快递与纸箱", domain: "空间治理", zone: "楼梯前室", level: "MEDIUM", active: false, version: "草稿" },
+  { id: "GB-55037-4.2.1", source: "建筑防火通用规范", title: "疏散通道与安全出口应保持畅通", domain: "消防安全", zone: "疏散通道", level: "HIGH", active: true, version: "v2.1", text: "疏散走道、楼梯间及安全出口应保持畅通，不得堆放影响人员安全疏散的物品。", cues: ["纸箱 / 快递堆物", "出口标识", "有效通行宽度"], counter: ["物品位于通道边界之外", "有效疏散宽度仍满足要求", "临时作业且有人现场值守"], fixes: ["移除疏散路径内障碍物", "补拍包含出口标识的全景证据", "复核有效通行宽度"] },
+  { id: "LAB-OPS-7.3", source: "校级实验室安全管理办法", title: "无人值守期间不得运行高风险设备", domain: "实验室安全", zone: "实验室", level: "HIGH", active: true, version: "v1.4", text: "涉及加热、高压、高速旋转的实验设备运行期间，应安排人员现场值守并保持应急通道畅通。", cues: ["设备运行指示灯", "实验区无人", "夜间时段"], counter: ["设备处于待机状态", "值守人员位于相邻控制室", "已启用远程联锁停机"], fixes: ["停止无人值守设备", "核验值守人员与实验审批单", "检查应急停机装置"] },
+  { id: "DORM-FIRE-3.6", source: "学生公寓消防安全细则", title: "电动车不得进入建筑内部或占用公共走道", domain: "消防安全", zone: "宿舍门厅", level: "HIGH", active: true, version: "v3.0", text: "电动自行车及其蓄电池不得进入宿舍楼内停放、充电，不得占用疏散走道和安全出口。", cues: ["电动车轮廓", "充电线缆", "宿舍门厅"], counter: ["无电池的维修车辆", "车辆位于室外划线区域", "画面为搬运经过状态"], fixes: ["将车辆移至室外停放区", "拆除违规充电线路", "复核门厅疏散净宽"] },
+  { id: "ELEC-SAFE-5.4", source: "校园用电安全检查指引", title: "禁止插线板串联和大功率设备共用插座", domain: "用电安全", zone: "教室 / 办公室", level: "HIGH", active: true, version: "v1.8", text: "移动式插座不得串联使用，大功率电器应使用独立回路并远离可燃物。", cues: ["插线板串联", "线缆发热变色", "周边可燃物"], counter: ["线缆为弱电数据线", "设备总功率未超限", "插座具备独立保护回路"], fixes: ["立即停止串联用电", "核验设备额定功率", "清理插座周边可燃物"] },
+  { id: "CANTEEN-GAS-2.8", source: "学校食堂燃气安全规范", title: "燃气阀门与报警装置周边不得遮挡", domain: "食堂安全", zone: "后厨操作间", level: "HIGH", active: true, version: "v2.3", text: "燃气总阀、切断装置和泄漏报警器前方应保持无遮挡，并按规定完成每日闭餐检查。", cues: ["燃气阀门", "报警器遮挡", "闭餐后火源"], counter: ["设备已断气停用", "遮挡物位于安全距离外", "现场人员正在短时作业"], fixes: ["清除阀门前方物品", "测试燃气报警联动", "补录闭餐检查记录"] },
+  { id: "CHEM-STOR-4.5", source: "危险化学品储存管理细则", title: "禁忌化学品应分柜分类存放", domain: "实验室安全", zone: "危化品暂存柜", level: "HIGH", active: true, version: "v2.0", text: "易燃、氧化性、腐蚀性等禁忌化学品应按相容性分类分柜存放，标签和台账保持一致。", cues: ["试剂标签", "存储柜类别", "容器泄漏痕迹"], counter: ["空包装待回收", "双层防泄漏隔离", "物料已完成失效处置"], fixes: ["按相容性重新分柜", "核验标签与出入库台账", "检查防泄漏托盘"] },
+  { id: "FACILITY-EDGE-6.1", source: "校园维修施工安全标准", title: "临边洞口必须设置连续防护和警示", domain: "校舍设施", zone: "施工区域", level: "MEDIUM", active: true, version: "v1.6", text: "楼板洞口、临边作业区应设置稳固连续的防护栏、踢脚板和明显警示标识。", cues: ["临边 / 洞口", "围挡缺失", "人员通行路径"], counter: ["洞口已加装承重盖板", "施工区处于封闭状态", "现场有专人持续监护"], fixes: ["补齐硬质防护栏", "增设夜间警示灯", "调整行人绕行路线"] },
+  { id: "WEATHER-RAIN-3.2", source: "校园极端天气应急预案", title: "强降雨期间应封控积水和井盖异常区域", domain: "环境安全", zone: "室外道路", level: "MEDIUM", active: true, version: "v2.5", text: "出现道路积水、井盖移位或排水口倒灌时，应立即设置警戒并组织人员绕行。", cues: ["路面积水深度", "井盖偏移", "降雨强度"], counter: ["水深低于警戒阈值", "区域已物理封闭", "画面为清洗作业积水"], fixes: ["设置围挡和绕行标识", "确认井盖完整固定", "持续监测积水水位"] },
+  { id: "TEMP-NEW-01", source: "校内临时治理要求", title: "楼梯前室不得临时堆放快递与纸箱", domain: "空间治理", zone: "楼梯前室", level: "MEDIUM", active: false, version: "草稿", text: "快递高峰期间，楼梯前室及疏散走道不得作为临时分拣或堆放区域。", cues: ["快递包裹", "楼梯前室", "堆放持续时间"], counter: ["位于划定分拣区域", "未侵入疏散边界", "短时搬运且有人值守"], fixes: ["转移至指定临时存放点", "恢复完整疏散空间", "建立高峰期巡查任务"] },
 ];
 
 function getStoredRisk(): Risk {
   if (typeof window === "undefined") return "WATCH";
+  const previewRisk = new URLSearchParams(window.location.search).get("risk")?.toUpperCase();
+  if (previewRisk === "WATCH" || previewRisk === "HIGH" || previewRisk === "NORMAL") return previewRisk;
   return (window.localStorage.getItem("campus-demo-risk") as Risk) || "WATCH";
 }
 
@@ -92,13 +101,20 @@ export default function CampusApp({ view }: { view: View }) {
     return () => lifecycle.abort();
   });
 
+  if (view === "dashboard") {
+    return <TooltipProvider>
+      <BigScreenDashboard risk={risk} stage={stage} onProbe={startProbe} onReset={resetDemo} />
+      <Toaster position="top-center" richColors />
+    </TooltipProvider>;
+  }
+
   return <TooltipProvider><div className="app-shell">
     <Sidebar view={view} open={mobileNav} onClose={() => setMobileNav(false)} />
     <div className="app-main">
       <Header view={view} risk={risk} onMenu={() => setMobileNav(true)} onReset={resetDemo} />
       <main className="workspace">
-        {view === "dashboard" && <Dashboard risk={risk} stage={stage} selected={selectedLocation} onSelect={(id) => { setSelectedLocation(id); if (window.innerWidth < 1100) setDetailOpen(true); }} onProbe={startProbe} onOpenDetail={() => setDetailOpen(true)} />}
         {view === "knowledge" && <Knowledge onNew={() => setNewCardOpen(true)} />}
+        {view === "guide" && <DemoGuide />}
         {view === "governance" && <Governance risk={risk} stage={stage} onRun={startProbe} />}
         {view === "cameras" && <Cameras risk={risk} onAnalyze={startProbe} />}
         {view === "agent" && <AgentChat risk={risk} stage={stage} onProbe={startProbe} onRectified={() => { setRisk("NORMAL"); setStage("done"); toast.success("整改证据已写入位置记忆，风险恢复正常"); }} />}
@@ -121,7 +137,7 @@ function Sidebar({ view, open, onClose }: { view: View; open: boolean; onClose: 
 }
 
 function Header({ view, risk, onMenu, onReset }: { view: View; risk: Risk; onMenu: () => void; onReset: () => void }) {
-  const title = { dashboard: "校园风险态势", knowledge: "条款知识库", governance: "智能体治理", cameras: "视频感知中心", agent: "主动研判智能体" }[view];
+  const title = { dashboard: "校园风险态势", guide: "系统演示导览", knowledge: "条款知识库", governance: "智能体治理", cameras: "视频感知中心", agent: "主动研判智能体" }[view];
   return <header className="topbar"><div className="topbar-title"><button className="icon-button menu-button" onClick={onMenu} aria-label="打开导航"><Menu size={20} /></button><div><span>校安智巡 2.0</span><h1>{title}</h1></div></div><div className="top-actions"><div className="time-chip"><Clock3 size={15} /><span>2026-09-14</span><strong>09:31:12</strong></div><div className={`global-risk ${risk.toLowerCase()}`}><span /> {risk === "WATCH" ? "待补证" : risk === "HIGH" ? "高风险" : "已恢复"}</div><Tooltip><TooltipTrigger asChild><button className="icon-button" onClick={onReset} aria-label="复位演示"><RefreshCw size={17} /></button></TooltipTrigger><TooltipContent>复位固定演示</TooltipContent></Tooltip><div className="avatar">安</div></div></header>;
 }
 
@@ -148,15 +164,46 @@ function Metric({ label, value, suffix }: { label: string; value: string; suffix
 function Evidence({ icon: Icon, label, on = false }: { icon: typeof ImageIcon; label: string; on?: boolean }) { return <div className={on ? "on" : ""}><Icon size={15} /><span>{label}</span></div>; }
 function Event({ time, type, title, desc, active }: { time: string; type: string; title: string; desc: string; active: boolean }) { return <div className={`event-item ${active ? "active" : ""}`}><time>{time}</time><span className={`event-icon ${type}`} /><div><strong>{title}</strong><small>{desc}</small></div>{active && <em>RUNNING</em>}</div>; }
 
+const demoModules = [
+  { no: "01", icon: Layers3, title: "校园风险态势", href: "/", input: "摄像头、巡查图片、天气、课程与人流", process: "按位置聚合世界状态，计算时态风险", output: "风险沙盘与重点隐患清单", talk: "先看全校，再聚焦教学楼 B 二层东侧。" },
+  { no: "02", icon: Camera, title: "视频感知", href: "/cameras", input: "实时视频或本地 Mock 图片", process: "识别对象、空间关系和连续状态变化", output: "场景摘要与风险假设", talk: "上传走廊堆物图片，说明系统理解的是场景关系。" },
+  { no: "03", icon: Bot, title: "主动研判智能体", href: "/agent", input: "风险假设、位置上下文与现有证据", process: "识别证据缺口，规划并调用摄像头补证", output: "多模态验证结果与风险等级", talk: "点击调用摄像头，演示 WATCH 升级为 HIGH。" },
+  { no: "04", icon: BookOpen, title: "条款知识库", href: "/knowledge", input: "法规、校规和校园治理要求", process: "拆成可检索知识卡并匹配位置与隐患", output: "条款依据、反向证据和整改清单", talk: "打开对应条款，展示判断为什么有依据。" },
+  { no: "05", icon: ShieldCheck, title: "整改与复验", href: "/agent", input: "高风险结论与反事实整改建议", process: "上传整改后照片，复核障碍物与通道关系", output: "NORMAL 状态与销号记录", talk: "上传整改后图片，完成从发现到销号。" },
+  { no: "06", icon: GitBranch, title: "治理轨迹与审计", href: "/governance", input: "每次模型调用、工具调用与人工操作", process: "记录节点、耗时、证据、版本和条件分支", output: "可解释、可追溯、可重放的审计链", talk: "最后回放治理轨迹，证明结果全程留痕。" },
+];
+
+function DemoGuide() {
+  return <div className="page-stack demo-guide-page">
+    <PageHeader eyebrow="PRESENTATION RUNBOOK" title="校安智巡完整演示流程" desc="沿着一条数据链完成：发现隐患 → 主动补证 → 条款判定 → 整改复验 → 审计销号。" action={<Link className="primary-action compact" href="/"><Play size={16}/> 开始演示</Link>} />
+    <section className="guide-overview panel">
+      <header><div><span>END-TO-END DATA FLOW</span><h2>一条数据流，串起六项核心能力</h2></div><b>建议演示时长：6–8 分钟</b></header>
+      <div className="guide-flow">
+        <div className="guide-source"><Upload size={22}/><strong>现场数据</strong><span>图像 · 视频 · 时空</span></div>
+        {demoModules.map(({ no, icon: Icon, title }, index) => <div className="guide-flow-unit" key={no}><ArrowRight size={22}/><div><i>{no}</i><Icon size={22}/><strong>{title}</strong></div>{index === demoModules.length - 1 && <ArrowRight size={22}/>}</div>)}
+        <div className="guide-source result"><Check size={22}/><strong>闭环销号</strong><span>状态写回 · 长期记忆</span></div>
+      </div>
+      <footer><span><b>输入</b> 多模态观测</span><ArrowRight/><span><b>理解</b> 场景与关系</span><ArrowRight/><span><b>推理</b> 风险与证据</span><ArrowRight/><span><b>行动</b> 整改与复验</span><ArrowRight/><span><b>沉淀</b> 审计与记忆</span></footer>
+    </section>
+    <section className="guide-modules">
+      {demoModules.map(({ no, icon: Icon, title, href, input, process, output, talk }) => <article className="guide-card panel" key={no}>
+        <header><span>{no}</span><div className="guide-card-icon"><Icon size={22}/></div><h3>{title}</h3><Link href={href}>进入功能 <ChevronRight size={17}/></Link></header>
+        <div className="guide-io"><span><b>输入</b>{input}</span><ArrowRight/><span><b>处理</b>{process}</span><ArrowRight/><span><b>输出</b>{output}</span></div>
+        <p><Play size={15}/><strong>讲解动作：</strong>{talk}</p>
+      </article>)}
+    </section>
+  </div>;
+}
+
 function Knowledge({ onNew }: { onNew: () => void }) {
   const [selected, setSelected] = useState(knowledgeCards[0]);
   const [activeDraft, setActiveDraft] = useState(false);
   const [query, setQuery] = useState("");
-  const cards = knowledgeCards.filter(c => `${c.title}${c.source}${c.domain}`.includes(query));
+  const cards = knowledgeCards.filter(c => `${c.title}${c.source}${c.domain}${c.zone}${c.id}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="page-stack"><PageHeader eyebrow="CLAUSE-LEVEL KNOWLEDGE" title="条款知识库" desc="把法规拆成智能体可检索、可引用、可立即生效的知识卡片。" action={<button className="primary-action compact" onClick={onNew}><Plus size={16}/> 新建条款卡</button>} />
-    <div className="knowledge-layout"><aside className="filter-panel panel"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索条款或风险类型" /></div><Filter title="知识领域" options={["全部领域  24","消防安全  11","实验室安全  7","校舍设施  6"]}/><Filter title="适用区域" options={["疏散通道","实验室","宿舍门厅","室外空间"]}/><Filter title="状态" options={["已激活  22","草稿  2"]}/></aside>
+    <div className="knowledge-layout"><aside className="filter-panel panel"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索条款或风险类型" /></div><Filter title="知识领域" options={["全部领域  29","消防安全  11","实验室安全  8","校舍设施  6","环境与用电  4"]}/><Filter title="适用区域" options={["疏散通道","实验室","宿舍门厅","食堂后厨","施工与室外区域"]}/><Filter title="状态" options={["已激活  27","草稿  2"]}/></aside>
       <section className="card-list panel"><div className="list-head"><strong>知识卡</strong><span>{cards.length} 条结果</span><button>版本 <ChevronDown size={14}/></button></div>{cards.map(card=><button key={card.id} className={`knowledge-item ${selected.id===card.id?"selected":""}`} onClick={()=>setSelected(card)}><div><span className={`status-tag ${card.active||activeDraft?"active":"draft"}`}>{card.active||activeDraft?"ACTIVE":"DRAFT"}</span><em>{card.version}</em></div><strong>{card.title}</strong><p>{card.source} · {card.id}</p><footer><span>{card.domain}</span><span>{card.zone}</span><b className={card.level.toLowerCase()}>{card.level}</b></footer></button>)}</section>
-      <article className="knowledge-detail panel"><div className="detail-heading"><div><span>CLAUSE DETAIL</span><h2>{selected.title}</h2></div><button className="icon-button"><Box size={17}/></button></div><div className="detail-meta"><span>法规来源<strong>{selected.source}</strong></span><span>条款编号<strong>{selected.id}</strong></span><span>适用位置<strong>{selected.zone}</strong></span></div><KnowledgeSection title="条款原文"><p>疏散走道、楼梯间及安全出口应保持畅通，不得堆放影响人员安全疏散的物品。</p></KnowledgeSection><KnowledgeSection title="视觉线索"><div className="cue-row"><span>纸箱 / 快递堆物</span><span>出口标识</span><span>有效通行宽度</span></div></KnowledgeSection><KnowledgeSection title="反向证据"><ul><li>物品位于通道边界之外</li><li>有效疏散宽度仍满足要求</li><li>临时作业且有人现场值守</li></ul></KnowledgeSection><KnowledgeSection title="整改清单"><ol><li><Check size={14}/>移除疏散路径内障碍物</li><li><Check size={14}/>补拍包含出口标识的全景证据</li><li><Check size={14}/>复核有效通行宽度</li></ol></KnowledgeSection>{!selected.active && !activeDraft ? <button className="primary-action full" onClick={()=>{setActiveDraft(true);toast.success("条款卡已激活，下一次智能体运行立即生效")}}><Zap size={17}/> Activate · 立即生效</button>:<div className="activated-banner"><Check size={17}/> 已激活 · Agent 下一次 Run 可检索</div>}</article>
+      <article className="knowledge-detail panel"><div className="detail-heading"><div><span>CLAUSE DETAIL · {selected.level}</span><h2>{selected.title}</h2></div><button className="icon-button"><Box size={17}/></button></div><div className="detail-meta"><span>法规来源<strong>{selected.source}</strong></span><span>条款编号<strong>{selected.id}</strong></span><span>适用位置<strong>{selected.zone}</strong></span></div><KnowledgeSection title="条款原文"><p>{selected.text}</p></KnowledgeSection><KnowledgeSection title="视觉线索"><div className="cue-row">{selected.cues.map(cue=><span key={cue}>{cue}</span>)}</div></KnowledgeSection><KnowledgeSection title="反向证据"><ul>{selected.counter.map(item=><li key={item}>{item}</li>)}</ul></KnowledgeSection><KnowledgeSection title="整改清单"><ol>{selected.fixes.map(item=><li key={item}><Check size={14}/>{item}</li>)}</ol></KnowledgeSection>{!selected.active && !activeDraft ? <button className="primary-action full" onClick={()=>{setActiveDraft(true);toast.success("条款卡已激活，下一次智能体运行立即生效")}}><Zap size={17}/> Activate · 立即生效</button>:<div className="activated-banner"><Check size={17}/> 已激活 · Agent 下一次 Run 可检索</div>}</article>
     </div></div>;
 }
 
@@ -178,7 +225,26 @@ function Trace({status,node,time,summary,meta}:{status:string;node:string;time:s
 function Cameras({ risk, onAnalyze }: { risk: Risk; onAnalyze: () => void }) {
   const cameras = ["cam_b2_east_01","cam_b2_west_02","cam_lab_302_03","cam_dorm3_lobby_01"];
   const [active, setActive] = useState(cameras[0]);
-  return <div className="page-stack"><PageHeader eyebrow="MULTIMODAL PERCEPTION" title="视频感知中心" desc="关注场景状态变化与风险假设，而不是单一目标检测分数。" action={<button className="primary-action compact" onClick={onAnalyze}><Sparkles size={16}/> 交给智能体研判</button>}/><div className="camera-layout"><aside className="camera-tree panel"><div className="search-box"><Search size={16}/><input placeholder="搜索摄像头"/></div><div className="tree-root"><strong><ChevronDown size={15}/> 青澜大学</strong><span><ChevronDown size={15}/> 教学楼 B</span><em><ChevronDown size={15}/> 2F</em>{cameras.slice(0,2).map((c,i)=><button className={active===c?"active":""} onClick={()=>setActive(c)} key={c}><Camera size={15}/>{c}<b>{i?"在线":"研判中"}</b></button>)}<span><ChevronRight size={15}/> 实验楼</span><span><ChevronRight size={15}/> 学生公寓</span></div><footer><span className="live-dot"/> 42 / 44 在线</footer></aside><section className="video-wall"><div className="video-main panel"><div className="video-surface"><div className="video-grid-lines"/><div className="detection-box box-one"><span>纸箱堆物</span></div><div className="detection-box box-two"><span>安全出口</span></div><div className="corridor-perspective"><i/><i/><i/><i/></div><div className="video-overlay-top"><span className="live-dot"/> LIVE <b>{active}</b><em>1080P · 25 FPS</em></div><div className="video-time">2026-09-14 09:31:12</div><div className="video-controls"><button><Play size={16}/></button><div><i/></div><span>00:12 / LIVE</span><button><Camera size={16}/></button></div></div></div><div className="camera-thumbs">{cameras.slice(1).map((c,i)=><button key={c} onClick={()=>setActive(c)} className="camera-thumb"><div><Camera size={22}/><span className="live-dot"/></div><strong>{c}</strong><small>{["西侧走廊","实验室 302","3 号楼门厅"][i]}</small></button>)}</div></section><aside className="perception-panel panel"><div className="panel-title"><div><span>REALTIME PERCEPTION</span><h2>场景理解</h2></div><Radio size={18}/></div><div className="scene-summary"><span>SCENE SUMMARY</span><p>疏散走廊内可见多组纸箱，靠近安全出口导向标识，通行路径可能受影响。</p></div><div className="state-change"><header><Activity size={16}/><strong>状态变化</strong><time>09:30:58</time></header><p>纸箱由墙侧移动至通道中央区域</p><span>relation: object overlaps evacuation_path</span></div><div className={`camera-hypothesis ${risk.toLowerCase()}`}><span>RISK HYPOTHESIS · 0.88</span><strong>{risk==="HIGH"?"疏散通道已被占用":"疑似占用疏散通道"}</strong><div><i style={{width:risk==="HIGH"?"88%":"64%"}}/></div></div><div className="relation-list"><strong>空间关系</strong><span><b>纸箱</b> inside <b>疏散走廊</b></span><span><b>纸箱</b> near <b>安全出口</b></span><span><b>通行区域</b> partially_occluded</span></div><button className="primary-action full" onClick={onAnalyze}><Sparkles size={17}/> 截取前后 15 秒并研判</button></aside></div></div>;
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const objectUrl = useRef<string | null>(null);
+  const [preview, setPreview] = useState("/corridor-before-after.png");
+  const [previewName, setPreviewName] = useState("corridor_obstruction_mock.jpg");
+  const [builtInMock, setBuiltInMock] = useState(true);
+  useEffect(() => () => { if (objectUrl.current) URL.revokeObjectURL(objectUrl.current); }, []);
+  const useMock = () => {
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = null;
+    setPreview("/corridor-before-after.png"); setPreviewName("corridor_obstruction_mock.jpg"); setBuiltInMock(true);
+    toast.success("已载入走廊堆物 Mock 图片");
+  };
+  const useLocalImage = (file?: File) => {
+    if (!file) return;
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = URL.createObjectURL(file);
+    setPreview(objectUrl.current); setPreviewName(file.name); setBuiltInMock(false); setActive("upload_mock_01");
+    toast.success("Mock 图片已载入，仅用于本地预览");
+  };
+  return <div className="page-stack"><PageHeader eyebrow="MULTIMODAL PERCEPTION" title="视频感知中心" desc="关注场景状态变化与风险假设，而不是单一目标检测分数。" action={<div className="camera-page-actions"><button className="secondary-action compact" onClick={useMock}><ImageIcon size={16}/> 加载示例 Mock</button><button className="secondary-action compact" onClick={()=>uploadRef.current?.click()}><Upload size={16}/> 上传图片</button><button className="primary-action compact" onClick={onAnalyze}><Sparkles size={16}/> 交给智能体研判</button><input ref={uploadRef} hidden type="file" accept="image/*" onChange={e=>useLocalImage(e.target.files?.[0])}/></div>}/><div className="camera-layout"><aside className="camera-tree panel"><div className="search-box"><Search size={16}/><input placeholder="搜索摄像头"/></div><div className="tree-root"><strong><ChevronDown size={15}/> 青澜大学</strong><span><ChevronDown size={15}/> 教学楼 B</span><em><ChevronDown size={15}/> 2F</em>{cameras.slice(0,2).map((c,i)=><button className={active===c?"active":""} onClick={()=>setActive(c)} key={c}><Camera size={15}/>{c}<b>{i?"在线":"研判中"}</b></button>)}<span><ChevronRight size={15}/> 实验楼</span><span><ChevronRight size={15}/> 学生公寓</span></div><footer><span className="live-dot"/> 42 / 44 在线</footer></aside><section className="video-wall"><div className="video-main panel"><div className={`video-surface ${builtInMock?"built-in-mock":"uploaded-mock"}`}><img className="video-upload-preview" src={preview} alt="视频感知 Mock 画面"/><div className="video-grid-lines"/><div className="detection-box box-one"><span>纸箱堆物</span></div><div className="detection-box box-two"><span>安全出口</span></div><div className="video-overlay-top"><span className="live-dot"/> MOCK INPUT <b>{active}</b><em>{previewName} · LOCAL ONLY</em></div><div className="video-time">2026-09-14 09:31:12</div><div className="video-controls"><button><Play size={16}/></button><div><i/></div><span>00:12 / MOCK</span><button onClick={()=>uploadRef.current?.click()} aria-label="上传 Mock 图片"><Upload size={16}/></button></div></div></div><div className="camera-thumbs">{cameras.slice(1).map((c,i)=><button key={c} onClick={()=>setActive(c)} className="camera-thumb"><div><Camera size={22}/><span className="live-dot"/></div><strong>{c}</strong><small>{["西侧走廊","实验室 302","3 号楼门厅"][i]}</small></button>)}</div></section><aside className="perception-panel panel"><div className="panel-title"><div><span>REALTIME PERCEPTION</span><h2>场景理解</h2></div><Radio size={18}/></div><div className="scene-summary"><span>SCENE SUMMARY</span><p>疏散走廊内可见多组纸箱，靠近安全出口导向标识，通行路径可能受影响。</p></div><div className="state-change"><header><Activity size={16}/><strong>状态变化</strong><time>09:30:58</time></header><p>纸箱由墙侧移动至通道中央区域</p><span>relation: object overlaps evacuation_path</span></div><div className={`camera-hypothesis ${risk.toLowerCase()}`}><span>RISK HYPOTHESIS · 0.88</span><strong>{risk==="HIGH"?"疏散通道已被占用":"疑似占用疏散通道"}</strong><div><i style={{width:risk==="HIGH"?"88%":"64%"}}/></div></div><div className="relation-list"><strong>空间关系</strong><span><b>纸箱</b> inside <b>疏散走廊</b></span><span><b>纸箱</b> near <b>安全出口</b></span><span><b>通行区域</b> partially_occluded</span></div><button className="primary-action full" onClick={onAnalyze}><Sparkles size={17}/> 对当前 Mock 图片进行研判</button></aside></div></div>;
 }
 
 function AgentChat({ risk, stage, onProbe, onRectified }: { risk: Risk; stage: RunStage; onProbe: () => void; onRectified: () => void }) {

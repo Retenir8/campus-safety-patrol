@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./big-screen.css";
 
 export const metadata: Metadata = {
   title: "校安智巡 2.0 · Campus Safety World Agent",
