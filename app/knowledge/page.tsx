@@ -1,2 +1,2 @@
-import CampusApp from "@/components/campus-app";
-export default function KnowledgePage() { return <CampusApp view="knowledge" />; }
+import KnowledgeView from "@/components/campus/knowledge-view";
+export default function KnowledgePage() { return <KnowledgeView />; }

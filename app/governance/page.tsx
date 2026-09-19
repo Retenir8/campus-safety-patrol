@@ -1,2 +1,2 @@
-import CampusApp from "@/components/campus-app";
-export default function GovernancePage() { return <CampusApp view="governance" />; }
+import { redirect } from "next/navigation";
+export default function GovernanceRedirect() { redirect("/audit"); }

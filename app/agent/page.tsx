@@ -1,2 +1,2 @@
-import CampusApp from "@/components/campus-app";
-export default function AgentPage() { return <CampusApp view="agent" />; }
+import AgentView from "@/components/campus/agent-view";
+export default function AgentPage() { return <AgentView />; }

@@ -1,2 +1,2 @@
-import CampusApp from "@/components/campus-app";
-export default function CamerasPage() { return <CampusApp view="cameras" />; }
+import CamerasView from "@/components/campus/cameras-view";
+export default function CamerasPage() { return <CamerasView />; }
