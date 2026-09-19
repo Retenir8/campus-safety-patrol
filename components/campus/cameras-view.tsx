@@ -293,14 +293,14 @@ export default function CamerasView() {
                 <label className="field">
                   <span>绑定场景</span>
                   <select value={camForm.locationId} onChange={(event) => setCamForm({ ...camForm, locationId: event.target.value })}>
-                    {locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    {locations.map((item) => <option key={item.id} value={item.id}>{item.short || item.name}</option>)}
                   </select>
                 </label>
                 <label className="field">
                   <span>接入方式</span>
                   <select value={camForm.sourceType} onChange={(event) => setCamForm({ ...camForm, sourceType: event.target.value as CameraSource })}>
-                    <option value="webcam">本机 / USB 摄像头</option>
-                    <option value="snapshot">IP 摄像头 JPEG 抓拍</option>
+                    <option value="webcam">本机</option>
+                    <option value="snapshot">IP 抓拍</option>
                   </select>
                 </label>
               </div>
