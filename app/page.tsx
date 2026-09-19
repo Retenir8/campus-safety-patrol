@@ -1,5 +1,5 @@
-import CampusApp from "@/components/campus-app";
+import DashboardView from "@/components/campus/dashboard-view";
 
 export default function Home() {
-  return <CampusApp view="dashboard" />;
+  return <DashboardView />;
 }

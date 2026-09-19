@@ -1,24 +1,19 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "./big-screen.css";
+import { Shell } from "@/components/campus/shell";
 
 export const metadata: Metadata = {
-  title: "校安智巡 2.0 · Campus Safety World Agent",
-  description: "校园位置级多模态感知、主动取证与动态风险研判演示系统。",
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-  },
+  title: "校安智巡 · 图片隐患识别智能体",
+  description: "面向校园巡检图片的隐患识别、条款判定、整改闭环与审计留痕工作台。",
+  icons: { icon: "/favicon.png", shortcut: "/favicon.png", apple: "/brand-logo.png" },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <Shell>{children}</Shell>
+      </body>
     </html>
   );
 }
